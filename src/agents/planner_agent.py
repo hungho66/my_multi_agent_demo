@@ -5,6 +5,7 @@ from ..llm.models import init_chat_base_model
 from ..utils.progress import progress_tracker
 from typing import List, Dict, Any, Optional
 import uuid
+import json
 
 def planner_agent_node(state: AgentState) -> Dict[str, Any]:
     """
@@ -54,31 +55,57 @@ LUÔN LUÔN trả lời bằng tiếng Việt.
     error_message_for_state: Optional[str] = None
 
     try:
-        ai_response_plan = structured_llm.invoke(prompt_messages)
-        if isinstance(ai_response_plan, Plan):
-            plan_output = ai_response_plan
-            for i, step in enumerate(plan_output.steps):
-                step.task_id = f"task_{str(uuid.uuid4())[:6]}_{i+1}" # Ensure unique, short task_id
+        # Invoke LLM to get response
+        model_response = structured_llm.invoke(prompt_messages)
+        
+        # Handle the LLM response
+        if isinstance(model_response, Plan):
+            # Directly process the Plan object
+            plan_output = model_response
+            
+            # Fix required_input if it's a string instead of a dictionary
+            for step in plan_output.steps:
+                if isinstance(step.required_input, str):
+                    try:
+                        # Try to parse the string as JSON
+                        step.required_input = json.loads(step.required_input)
+                    except json.JSONDecodeError:
+                        # If it's not valid JSON, create a default dictionary
+                        if step.agent_or_tool_name == "search_executor":
+                            step.required_input = {"query": step.required_input}
+                        elif step.agent_or_tool_name == "weather_executor":
+                            step.required_input = {"city": step.required_input}
+                        else:
+                            step.required_input = {"input": step.required_input}
+                
+                # Ensure required_input is a dictionary
+                if not isinstance(step.required_input, dict):
+                    step.required_input = {"query": str(step.required_input)}
+                
+                # Regenerate task IDs to ensure uniqueness
+                step.task_id = f"task_{str(uuid.uuid4())[:6]}"
+            
             show_agent_reasoning(plan_output, agent_name_log, color="magenta")
             progress_tracker.update_status(agent_name_log, status_message=f"Plan created with {len(plan_output.steps)} steps.")
         else:
-            error_message_for_state = "LLM did not return a valid Plan object."
+            error_message_for_state = "LLM không trả về Plan object hợp lệ."
             show_agent_reasoning(error_message_for_state, agent_name_log, color="red")
             progress_tracker.update_status(agent_name_log, status_message=f"ERROR: {error_message_for_state}")
 
     except Exception as e:
-        error_message_for_state = f"Error calling LLM for planning: {type(e).__name__} - {str(e)}"
+        error_message_for_state = f"Lỗi khi gọi LLM cho planning: {type(e).__name__} - {str(e)}"
         show_agent_reasoning(error_message_for_state, agent_name_log, color="red")
         progress_tracker.update_status(agent_name_log, status_message=f"ERROR: {error_message_for_state}")
 
     if not plan_output or not plan_output.steps:
-        fallback_thought = "Fallback plan: performing a simple search for the entire query."
+        # Create a fallback plan when original plan is empty or invalid
+        fallback_thought = "Kế hoạch dự phòng: thực hiện tìm kiếm đơn giản cho toàn bộ câu hỏi."
         fallback_steps = [PlanStep(
             task_id=f"task_fallback_{str(uuid.uuid4())[:6]}",
-            task_description=f"Search for general information about: '{current_query}'.",
+            task_description=f"Tìm kiếm thông tin về: '{current_query}'.",
             agent_or_tool_name="search_executor",
             required_input={"query": current_query},
-            reasoning="Fallback step due to planning error."
+            reasoning="Bước dự phòng do lỗi trong quá trình lập kế hoạch."
         )]
         plan_output = Plan(
             original_query=current_query,
@@ -86,9 +113,9 @@ LUÔN LUÔN trả lời bằng tiếng Việt.
             steps=fallback_steps
         )
         if not error_message_for_state:
-            error_message_for_state = "Could not create a detailed plan, using fallback."
-        show_agent_reasoning("Using fallback plan.", agent_name_log, color="yellow")
-        progress_tracker.update_status(agent_name_log, status_message="Using fallback plan.")
+            error_message_for_state = "Không thể tạo kế hoạch chi tiết, sử dụng kế hoạch dự phòng."
+        show_agent_reasoning("Sử dụng kế hoạch dự phòng.", agent_name_log, color="yellow")
+        progress_tracker.update_status(agent_name_log, status_message="Sử dụng kế hoạch dự phòng.")
 
     planner_aimessage_content = plan_output.model_dump_json(indent=2)
     update_data: Dict[str, Any] = {
@@ -99,5 +126,5 @@ LUÔN LUÔN trả lời bằng tiếng Việt.
     if error_message_for_state:
         update_data["error_message"] = error_message_for_state
 
-    progress_tracker.update_status(agent_name_log, status_message="Planning complete.")
+    progress_tracker.update_status(agent_name_log, status_message="Lập kế hoạch hoàn tất.")
     return update_data 

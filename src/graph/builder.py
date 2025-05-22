@@ -11,66 +11,66 @@ from typing import Dict, Any
 console = Console()
 
 def _route_after_planning(state: AgentState) -> str:
-    """Decides the next step after PlannerAgent completes."""
+    """Quyết định bước tiếp theo sau khi PlannerAgent hoàn thành."""
     agent_name_log = "RoutingLogic (AfterPlanner)"
-    progress_tracker.update_status(agent_name_log, status_message="Checking planning results...")
-    show_agent_reasoning(f"Checking state after PlannerAgent.", agent_name_log, color="grey50")
+    progress_tracker.update_status(agent_name_log, status_message="Kiểm tra kết quả lập kế hoạch...")
+    show_agent_reasoning(f"Kiểm tra trạng thái sau PlannerAgent.", agent_name_log, color="grey50")
 
     if state.get("error_message"):
-        console.print(f"[bold red]Error from Planner: {state['error_message']}. Routing to Summary.[/]", style="dim red")
-        progress_tracker.update_status(agent_name_log, status_message="Planner error, routing to Summary.")
+        console.print(f"[bold red]Lỗi từ Planner: {state['error_message']}. Chuyển sang Summary.[/]", style="dim red")
+        progress_tracker.update_status(agent_name_log, status_message="Lỗi Planner, chuyển sang Summary.")
         return "summary_agent"
 
     plan = state.get("plan")
     if not plan or not plan.steps:
-        console.print("[bold yellow]Planner did not generate valid execution steps. Routing to Summary.[/]", style="dim yellow")
-        progress_tracker.update_status(agent_name_log, status_message="Empty plan, routing to Summary.")
+        console.print("[bold yellow]Planner không tạo được các bước thực thi hợp lệ. Chuyển sang Summary.[/]", style="dim yellow")
+        progress_tracker.update_status(agent_name_log, status_message="Kế hoạch rỗng, chuyển sang Summary.")
         if not state.get("error_message"):
-             state["error_message"] = "Planner Agent did not generate any execution steps."
+             state["error_message"] = "Planner Agent không tạo được bước thực thi nào."
         return "summary_agent"
 
-    console.print("[green]Plan created successfully, routing to ExecutionAgent.[/]", style="dim green")
-    progress_tracker.update_status(agent_name_log, status_message="Valid plan, routing to Execution.")
+    console.print("[green]Kế hoạch đã được tạo thành công, chuyển sang ExecutionAgent.[/]", style="dim green")
+    progress_tracker.update_status(agent_name_log, status_message="Kế hoạch hợp lệ, chuyển sang Execution.")
     return "execution_agent"
 
 def _route_after_execution(state: AgentState) -> str:
-    """Decides the next step after ExecutionAgent completes."""
+    """Quyết định bước tiếp theo sau khi ExecutionAgent hoàn thành."""
     agent_name_log = "RoutingLogic (AfterExecution)"
-    progress_tracker.update_status(agent_name_log, status_message="Checking execution results...")
-    show_agent_reasoning(f"Checking state after ExecutionAgent.", agent_name_log, color="grey50")
+    progress_tracker.update_status(agent_name_log, status_message="Kiểm tra kết quả thực thi...")
+    show_agent_reasoning(f"Kiểm tra trạng thái sau ExecutionAgent.", agent_name_log, color="grey50")
 
     if state.get("error_message"):
-        console.print(f"[bold red]Error from Execution: {state['error_message']}. Routing to Summary.[/]", style="dim red")
-        progress_tracker.update_status(agent_name_log, status_message="Execution error, routing to Summary.")
+        console.print(f"[bold red]Lỗi từ Execution: {state['error_message']}. Chuyển sang Summary.[/]", style="dim red")
+        progress_tracker.update_status(agent_name_log, status_message="Lỗi thực thi, chuyển sang Summary.")
         return "summary_agent"
 
     if not state.get("executed_tool_results"):
-        console.print("[bold yellow]ExecutionAgent produced no tool results. Routing to Analysis.[/]", style="dim yellow")
-        progress_tracker.update_status(agent_name_log, status_message="No tool results, routing to Analysis.")
+        console.print("[bold yellow]ExecutionAgent không tạo ra kết quả thực thi nào. Chuyển sang Analysis.[/]", style="dim yellow")
+        progress_tracker.update_status(agent_name_log, status_message="Không có kết quả tool, chuyển sang Analysis.")
     else:
-        console.print("[green]Tool execution complete, routing to AnalysisAgent.[/]", style="dim green")
-        progress_tracker.update_status(agent_name_log, status_message="Tool execution done, routing to Analysis.")
+        console.print("[green]Thực thi công cụ hoàn tất, chuyển sang AnalysisAgent.[/]", style="dim green")
+        progress_tracker.update_status(agent_name_log, status_message="Thực thi xong, chuyển sang Analysis.")
     return "analysis_agent"
 
 def _route_after_analysis(state: AgentState) -> str:
-    """Decides the next step after AnalysisAgent completes."""
+    """Quyết định bước tiếp theo sau khi AnalysisAgent hoàn thành."""
     agent_name_log = "RoutingLogic (AfterAnalysis)"
-    progress_tracker.update_status(agent_name_log, status_message="Checking analysis results...")
-    show_agent_reasoning(f"Checking state after AnalysisAgent.", agent_name_log, color="grey50")
+    progress_tracker.update_status(agent_name_log, status_message="Kiểm tra kết quả phân tích...")
+    show_agent_reasoning(f"Kiểm tra trạng thái sau AnalysisAgent.", agent_name_log, color="grey50")
 
     if state.get("error_message"):
-        console.print(f"[bold red]Error from Analysis: {state['error_message']}. Routing to Summary.[/]", style="dim red")
-        progress_tracker.update_status(agent_name_log, status_message="Analysis error, routing to Summary.")
+        console.print(f"[bold red]Lỗi từ Analysis: {state['error_message']}. Chuyển sang Summary.[/]", style="dim red")
+        progress_tracker.update_status(agent_name_log, status_message="Lỗi phân tích, chuyển sang Summary.")
     else:
-        console.print("[green]Analysis complete, routing to SummaryAgent.[/]", style="dim green")
-        progress_tracker.update_status(agent_name_log, status_message="Analysis done, routing to Summary.")
+        console.print("[green]Phân tích hoàn tất, chuyển sang SummaryAgent.[/]", style="dim green")
+        progress_tracker.update_status(agent_name_log, status_message="Phân tích xong, chuyển sang Summary.")
     return "summary_agent"
 
 def build_graph() -> StateGraph:
     """
-    Builds and returns the StateGraph for the multi-agent system.
+    Xây dựng và trả về StateGraph cho hệ thống đa agent.
     """
-    progress_tracker.update_status("GraphBuilder", status_message="Starting graph construction...")
+    progress_tracker.update_status("GraphBuilder", status_message="Bắt đầu xây dựng graph...")
     workflow = StateGraph(AgentState)
 
     workflow.add_node("planner_agent", planner_agent_node)
@@ -98,6 +98,6 @@ def build_graph() -> StateGraph:
     workflow.add_edge("summary_agent", END)
 
     app = workflow.compile()
-    console.print("[bold green]LangGraph compiled successfully.[/]", style="dim green")
-    progress_tracker.update_status("GraphBuilder", status_message="Graph compiled successfully.")
+    console.print("[bold green]LangGraph biên dịch thành công.[/]", style="dim green")
+    progress_tracker.update_status("GraphBuilder", status_message="Graph biên dịch thành công.")
     return app 

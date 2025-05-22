@@ -40,6 +40,7 @@ Một backend API được xây dựng bằng FastAPI cho phép tương tác v�
 
 ## Cấu trúc thư mục dự án
 
+```
 /my_multi_agent_demo
 |-- app/                                # Ứng dụng web (backend và frontend)
 |   |-- backend/                        # Backend API sử dụng FastAPI
@@ -128,7 +129,7 @@ Một backend API được xây dựng bằng FastAPI cho phép tương tác v�
 |-- .env.example                      # File mẫu biến môi trường
 |-- pyproject.toml                    # Cấu hình dự án Python (uv/Poetry)
 |-- README.md                         # Hướng dẫn dự án
-
+```
 
 
 -----

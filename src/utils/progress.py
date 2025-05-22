@@ -1,48 +1,39 @@
 from datetime import datetime, timezone
-from rich.console import Console
-from rich.live import Live
-from rich.table import Table
-from rich.style import Style
-from rich.text import Text
 from typing import Dict, Optional, Callable, List, Any
 
-console = Console(width=120)
-
 class AgentProgress:
-    """Manages and displays progress for multiple agents."""
+    """Quản lý và hiển thị tiến trình cho nhiều agent."""
 
     def __init__(self):
         self.agent_status: Dict[str, Dict[str, Any]] = {}
-        self.table = Table(show_header=False, box=None, padding=(0, 1))
-        self.live = Live(self.table, console=console, refresh_per_second=10, vertical_overflow="visible")
         self.started = False
         self.update_handlers: List[Callable[[str, Optional[Dict[str, Any]], str, str], None]] = []
+        self.show_all_logs = False  # Tùy chọn hiển thị tất cả logs
 
     def register_handler(self, handler: Callable[[str, Optional[Dict[str, Any]], str, str], None]):
-        """Registers a handler to be called on agent status updates."""
+        """Đăng ký handler được gọi khi cập nhật trạng thái agent."""
         self.update_handlers.append(handler)
         return handler
 
     def unregister_handler(self, handler: Callable[[str, Optional[Dict[str, Any]], str, str], None]):
-        """Unregisters a previously registered handler."""
+        """Hủy đăng ký handler đã đăng ký trước đó."""
         if handler in self.update_handlers:
             self.update_handlers.remove(handler)
 
     def start(self):
-        """Starts the progress display."""
+        """Bắt đầu hiển thị tiến trình."""
         if not self.started:
-            self.live.start(refresh=True)
             self.started = True
+            print("\n--- BẮT ĐẦU THEO DÕI TIẾN TRÌNH ---")
 
     def stop(self):
-        """Stops the progress display."""
+        """Dừng hiển thị tiến trình."""
         if self.started:
-            self.live.stop()
             self.started = False
-            console.print()
+            print("\n--- KẾT THÚC THEO DÕI TIẾN TRÌNH ---\n")
 
     def update_status(self, agent_name: str, optional_data: Optional[Dict[str, Any]] = None, status_message: str = ""):
-        """Updates the status of an agent."""
+        """Cập nhật trạng thái của một agent."""
         if agent_name not in self.agent_status:
             self.agent_status[agent_name] = {"status_message": "", "optional_data": {}}
 
@@ -58,10 +49,10 @@ class AgentProgress:
             handler(agent_name, self.agent_status[agent_name].get("optional_data"), status_message, timestamp)
 
         if self.started:
-            self._refresh_display()
+            self._print_status_update(agent_name, status_message, optional_data)
 
     def get_all_status(self) -> Dict[str, Dict[str, Any]]:
-        """Gets the current status of all agents."""
+        """Lấy trạng thái hiện tại của tất cả agents."""
         return {
             agent_name: {
                 "optional_data": info.get("optional_data", {}),
@@ -73,66 +64,46 @@ class AgentProgress:
         }
 
     def _get_display_name(self, agent_name: str) -> str:
-        """Converts agent_name to a display-friendly format."""
+        """Chuyển agent_name thành định dạng hiển thị thân thiện."""
         if agent_name.endswith("Agent"):
             return agent_name[:-5].replace("_", " ").title()
         if agent_name.endswith("_agent"):
             return agent_name[:-6].replace("_", " ").title()
         return agent_name.replace("_", " ").title()
 
+    def _print_status_update(self, agent_name: str, status_message: str, optional_data: Optional[Dict[str, Any]] = None):
+        """In cập nhật trạng thái của agent."""
+        # Chỉ hiển thị log quan trọng nếu không bật show_all_logs
+        if not self.show_all_logs:
+            if any(skip_term in agent_name.lower() for skip_term in ["routing", "internal"]):
+                return
+            if status_message and (
+                not any(important_term in status_message.lower() for important_term in 
+                      ["lỗi", "bắt đầu", "hoàn thành", "thành công", "thất bại", "đang thực thi"])
+            ):
+                return
 
-    def _refresh_display(self):
-        """Refreshes the progress display table."""
-        self.table = Table(show_header=False, box=None, padding=(0,1))
-        self.table.add_column(width=120)
-
-        agent_display_order = ["PlannerAgent", "ExecutionAgent", "AnalysisAgent", "SummaryAgent", "GraphBuilder", "RoutingLogic (AfterPlanner)", "RoutingLogic (AfterExecution)", "RoutingLogic (AfterAnalysis)"]
-
-        sorted_agent_names = sorted(
-            self.agent_status.keys(),
-            key=lambda x: agent_display_order.index(x) if x in agent_display_order else float('inf')
-        )
-
-        for agent_name in sorted_agent_names:
-            info = self.agent_status[agent_name]
-            status_msg = info.get("status_message", "")
-            opt_data = info.get("optional_data", {})
-
-            style = Style(color="yellow")
-            symbol = "⏳"
-
-            if "lỗi" in status_msg.lower() or "thất bại" in status_msg.lower() or "error" in status_msg.lower():
-                style = Style(color="red", bold=True)
-                symbol = "❌"
-            elif "hoàn thành" in status_msg.lower() or "done" in status_msg.lower() or "thành công" in status_msg.lower() or "sẵn sàng" in status_msg.lower() or "hợp lệ" in status_msg.lower():
-                style = Style(color="green", bold=True)
-                symbol = "✅"
-            elif "bắt đầu" in status_msg.lower() or "đang" in status_msg.lower():
-                style = Style(color="blue")
-                symbol = "⚙️"
-
-
-            agent_display_name = self._get_display_name(agent_name)
-
-            status_text = Text()
-            status_text.append(f"{symbol} ", style=style)
-            status_text.append(f"{agent_display_name:<25}", style=Style(bold=True, color="default"))
-
-            optional_data_parts = []
-            if task_id_val := opt_data.get("task_id"):
-                optional_data_parts.append(f"Task: {task_id_val}")
-            if current_step_val := opt_data.get("current_step"):
-                optional_data_parts.append(f"Bước: {current_step_val}")
-
-
-            if optional_data_parts:
-                 status_text.append(f"[{', '.join(optional_data_parts)}] ", style=Style(color="cyan"))
-
-            status_text.append(status_msg, style=style)
-
-            self.table.add_row(status_text)
-
-        if self.started:
-            self.live.update(self.table, refresh=True)
+        display_name = self._get_display_name(agent_name)
+        
+        # Tạo indicator dựa trên trạng thái
+        indicator = "•"
+        if "lỗi" in status_message.lower() or "thất bại" in status_message.lower():
+            indicator = "✗"
+        elif "hoàn thành" in status_message.lower() or "thành công" in status_message.lower():
+            indicator = "✓"
+        
+        # Tạo thông tin thêm từ optional_data
+        data_info = ""
+        if optional_data:
+            parts = []
+            if task_id := optional_data.get("task_id"):
+                parts.append(f"Task: {task_id}")
+            if current_step := optional_data.get("current_step"):
+                parts.append(f"Bước: {current_step}")
+            if parts:
+                data_info = f" [{', '.join(parts)}]"
+        
+        # In trạng thái
+        print(f"{indicator} {display_name:<20}{data_info} - {status_message}")
 
 progress_tracker = AgentProgress() 

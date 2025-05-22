@@ -1,0 +1,67 @@
+[project]
+name = "my-multi-agent-demo"
+version = "0.1.0"
+description = "A multi-agent demo with planning, execution, reasoning display, using LangGraph, FastAPI, and Gemini." # Bạn có thể giữ lại mô tả này
+readme = "README.md"
+requires-python = ">=3.13" # Đã cập nhật theo yêu cầu của bạn
+authors = [
+    { name = "Your Name", email = "your.email@example.com" } # Thay thế bằng thông tin của bạn
+]
+dependencies = [
+    "langchain",
+    "langchain-core",
+    "langchain-community",
+    "langgraph",
+    "langsmith",
+    "langchain-google-genai",
+    "fastapi",
+    "uvicorn[standard]", # Extras được chỉ định trong dấu ngoặc vuông
+    "pydantic",
+    "python-dotenv",
+    "tavily-python",
+    "colorama",
+    "rich",
+    "httpx",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+# Build system - Quan trọng nếu bạn muốn build package.
+# Nếu bạn chỉ dùng pyproject.toml để uv quản lý dependencies mà không build wheel/sdist,
+# phần này có thể không quá quan trọng hoặc có thể dùng một backend đơn giản.
+# Tuy nhiên, để đầy đủ, bạn nên có. Setuptools là một lựa chọn phổ biến.
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+backend-path = ["."] # Thường không cần nếu setup.py hoặc setup.cfg không dùng cấu trúc phức tạp
+
+# Hướng dẫn cho người dùng uv:
+#
+# 1. Tạo và kích hoạt môi trường ảo (nếu chưa có):
+#    uv venv
+#    source .venv/bin/activate  # Linux/macOS
+#    # .venv\Scripts\activate    # Windows
+#
+# 2. Cài đặt các dependencies chính từ pyproject.toml:
+#    uv pip sync  # uv tự động tìm pyproject.toml trong thư mục hiện tại
+#    # Hoặc chỉ định rõ:
+#    # uv pip install .
+#
+# 3. Để cài đặt cả các dependencies trong group 'dev' (optional-dependencies):
+#    uv pip sync --extra dev
+#    # Hoặc chỉ định rõ:
+#    # uv pip install ".[dev]"
+#
+# Tùy chọn: Nếu bạn muốn tạo file requirements.txt (ví dụ, cho các mục đích khác hoặc CI/CD):
+#    # Chỉ dependencies chính:
+#    uv pip compile pyproject.toml -o requirements.txt
+#    # Bao gồm cả group 'dev':
+#    uv pip compile pyproject.toml --all-extras -o requirements-dev.txt
+#    # (Lưu ý: --all-extras sẽ bao gồm tất cả các nhóm trong optional-dependencies,
+#    #  hoặc bạn có thể dùng --extra dev để chỉ định cụ thể)
+#
+#    # Sau đó có thể cài đặt từ file này nếu muốn:
+#    # uv pip sync requirements.txt
